@@ -29,24 +29,28 @@ def main() -> None:
     entities = {npc, player}
 
     game_map = generate_dungeon(
-        max_rooms=max_rooms,
-        room_min_size=room_min_size,
-        room_max_size=room_max_size,
-        map_width=map_width,
-        map_height=map_height,
-        player=player
+        max_rooms = max_rooms,
+        room_min_size = room_min_size,
+        room_max_size = room_max_size,
+        map_width = map_width,
+        map_height = map_height,
+        player = player
     )
 
-    engine = Engine(entities=entities, event_handler=event_handler, game_map=game_map, player=player)
+    engine = Engine(
+        entities = entities,
+        event_handler = event_handler,
+        game_map = game_map,
+        player = player)
 
     with tcod.context.new_terminal(
         screen_width,
         screen_height,
-        tileset=tileset,
-        title="PyRogue",
-        vsync=True
+        tileset = tileset,
+        title = "PyRogue",
+        vsync = True
     ) as context:
-        root_console = tcod.Console(screen_width, screen_height, order="F")
+        root_console = tcod.Console(screen_width, screen_height, order = "F")
         while True:
             engine.render(console=root_console, context=context)
 
