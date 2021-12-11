@@ -21,7 +21,7 @@ class Engine:
         self.player = player
         
     def handle_enemy_turns(self) -> None:
-        for entity in self.game_map.entities - {self.player}:
+        for entity in set(self.game_map.actors) - {self.player}:
             if entity.ai:
                 entity.ai.perform()
 

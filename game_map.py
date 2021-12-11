@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, Iterator, Optional, TYPE_CHECKING
 
-import numpy as np # type: ignore
+import numpy as np  # type: ignore
 from tcod.console import Console
 
 from entity import Actor
@@ -19,13 +19,13 @@ class GameMap:
         self.engine = engine
         self.width, self.height = width, height
         self.entities = set(entities)
-        self.tiles = np.full((width, height), fill_value = tile_types.wall, order = "F")
+        self.tiles = np.full((width, height), fill_value=tile_types.wall, order="F")
 
         self.visible = np.full(
-            (width, height), fill_value = False, order = "F"
+            (width, height), fill_value=False, order="F"
         ) # Tiles que o jogador pode ver.
         self.explored = np.full(
-            (width, height), fill_value = False, order = "F"
+            (width, height), fill_value=False, order="F"
         ) # Tiles que o jogador já viu.
 
     @property
@@ -67,9 +67,9 @@ class GameMap:
         # Se não estiver, mas for um tile "explorado", desenha ele com as cores "dark".
         # Senão, o padrão é "SHROUD".
         console.tiles_rgb[0 : self.width, 0 : self.height] = np.select(
-            condlist = [self.visible, self.explored],
-            choicelist = [self.tiles["light"], self.tiles["dark"]],
-            default = tile_types.SHROUD,
+            condlist=[self.visible, self.explored],
+            choicelist=[self.tiles["light"], self.tiles["dark"]],
+            default=tile_types.SHROUD,
         )
 
         entities_sorted_for_rendering = sorted(
