@@ -1,5 +1,3 @@
-from entity import Entity
-from game_map import GameMap
 import copy
 
 import tcod
