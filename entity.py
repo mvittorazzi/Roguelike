@@ -15,11 +15,11 @@ T = TypeVar("T", bound="Entity")
 class Entity:
     # Um objeto genérico parar representar o jogador, inimigos, itens, etc.
     
-    gamemap: GameMap
+    parent: GameMap
     
     def __init__(
         self,
-        gamemap: Optional[GameMap] = None,
+        parent: Optional[GameMap] = None,
         x: int = 0,
         y: int = 0,
         char: str = "?",
@@ -35,17 +35,21 @@ class Entity:
         self.name = name
         self.blocks_movement = blocks_movement
         self.render_order = render_order
-        if gamemap:
+        if parent:
             # Se o gamemap não é informado agora então será setado em seguida.
-            self.gamemap = gamemap
-            gamemap.entities.add(self)
+            self.gamemap = parent
+            parent.entities.add(self)
+
+    @property
+    def gamemap(self) -> GameMap:
+        return self.parent.gamemap
 
     def spawn(self: T, gamemap: GameMap, x: int, y: int) -> T:
         # Cria uma cópia dessa instância no local designado.
         clone = copy.deepcopy(self)
         clone.x = x
         clone.y = y
-        clone.gamemap = gamemap
+        clone.parent = gamemap
         gamemap.entities.add(clone)
         return clone
 
@@ -54,9 +58,10 @@ class Entity:
         self.x = x
         self.y = y
         if gamemap:
-            if hasattr(self, "gamemap"): # Possivelmente não inicializado.
-                self.gamemap.entities.remove(self)
-            self.gamemap = gamemap
+            if hasattr(self, "parent"): # Possivelmente não inicializado.
+                if self.parent is self.gamemap:
+                    self.gamemap.entities.remove(self)
+            self.parent = gamemap
             gamemap.entities.add(self)
 
     def move(self, dx: int, dy: int) -> None:
@@ -88,7 +93,7 @@ class Actor(Entity):
         self.ai: Optional[BaseAI] = ai_cls(self)
 
         self.fighter = fighter
-        self.fighter.entity = self
+        self.fighter.parent = self
 
     @property
     def is_alive(self) -> bool:
