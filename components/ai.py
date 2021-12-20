@@ -18,18 +18,22 @@ class BaseAI(Action):
         raise NotImplementedError()
 
     def get_path_to(self, dest_x: int, dest_y: int) -> List[Tuple[int, int]]:
-        # Computa e retorna o caminho até a posição alvo.
-        # Se não há caminho válido então retorna uma lista vazia.
+        """
+        Computa e retorna o caminho até a posição alvo.
+        Se não há caminho válido então retorna uma lista vazia.
 
-        # Copia o array "caminhável".
+        Copia o array 'caminhável'.
+        """
         cost = np.array(self.entity.gamemap.tiles["walkable"], dtype = np.int8)
 
         for entity in self.entity.gamemap.entities:
             # Verifica se há uma entidade bloqueando o movimento e se o custo não é zero (bloqueando).
             if entity.blocks_movement and cost[entity.x, entity.y]:
-                # Adiciona ao custo de uma posição bloqueada.
-                # Um número menor significa que mais inimigos se acumularão em corredores.
-                # Um número maior significa que inimigos tomarão caminhos mais longos para encontrar o jogador.
+                """
+                Adiciona ao custo de uma posição bloqueada.
+                Um número menor significa que mais inimigos se acumularão em corredores.
+                Um número maior significa que inimigos tomarão caminhos mais longos para encontrar o jogador.
+                """
                 cost[entity.x, entity.y] += 10
 
         graph = tcod.path.SimpleGraph(cost = cost, cardinal = 2, diagonal = 3)

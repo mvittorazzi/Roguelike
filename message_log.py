@@ -25,9 +25,11 @@ class MessageLog:
     def add_message(
         self, text: str, fg: Tuple[int, int, int] = color.white, *, stack: bool = True,
     ) -> None:
-        # Adiciona uma mensagem ao log.
-        # "Text" é a mensagem de texto, "fg" é a cor.
-        # Se "stack" for True então a mensagem acumula com a anterior com texto igual.
+        """
+        Adiciona uma mensagem ao log.
+        "Text" é a mensagem de texto, "fg" é a cor.
+        Se "stack" for True então a mensagem acumula com a anterior com texto igual.
+        """
         if stack and self.messages and text == self.messages[-1].plain_text:
             self.messages[-1].count += 1
         else:
@@ -36,8 +38,10 @@ class MessageLog:
     def render(
         self, console: tcod.Console, x: int, y: int, width: int, height: int,
     ) -> None:
-        # Renderiza o log de mensagem em uma área determinada.
-        # "x, "y", "width", "height" são a área retangular onde será renderizado no "console".
+        """
+        Renderiza o log de mensagem em uma área determinada.
+        "x, "y", "width", "height" são a área retangular onde será renderizado no "console".
+        """
         self.render_messages(console, x, y, width, height, self.messages)
 
     @staticmethod
@@ -58,8 +62,10 @@ class MessageLog:
         height: int,
         messages: Reversible[Message],
     ) -> None:
-        # Renderiza as mensagens recebidas.
-        # A variável "messages" é renderizada começando pela última mensagem.
+        """
+        Renderiza as mensagens recebidas.
+        A variável "messages" é renderizada começando pela última mensagem.
+        """
         y_offset = height - 1
 
         for message in reversed(messages):

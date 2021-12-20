@@ -5,7 +5,7 @@ from typing import Iterable, Iterator, Optional, TYPE_CHECKING
 import numpy as np  # type: ignore
 from tcod.console import Console
 
-from entity import Actor
+from entity import Actor, Item
 import tile_types
 
 if TYPE_CHECKING:
@@ -40,6 +40,10 @@ class GameMap:
             for entity in self.entities
             if isinstance(entity, Actor) and entity.is_alive
         )
+    
+    @property
+    def items(self) -> Iterator[Item]:
+        yield from (entity for entity in self.entities if isinstance(entity, Item))
 
     def get_blocking_entity_at_location(
         self, location_x: int, location_y: int,
@@ -66,10 +70,12 @@ class GameMap:
         return 0 <= x < self.width and 0 <= y < self.height
     
     def render(self, console: Console) -> None:
-        # Renderiza a mapa.
-        # Se um tile está no array "visível", então desenha ele com as cores "light".
-        # Se não estiver, mas for um tile "explorado", desenha ele com as cores "dark".
-        # Senão, o padrão é "SHROUD".
+        """
+        Renderiza a mapa.
+        Se um tile está no array "visível", então desenha ele com as cores "light".
+        Se não estiver, mas for um tile "explorado", desenha ele com as cores "dark".
+        Senão, o padrão é "SHROUD".
+        """
         console.tiles_rgb[0 : self.width, 0 : self.height] = np.select(
             condlist=[self.visible, self.explored],
             choicelist=[self.tiles["light"], self.tiles["dark"]],
