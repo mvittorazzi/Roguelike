@@ -6,5 +6,6 @@ ehthumbs_vista.db
 .idea
 
 __pycache__
+*/__pycache__
 
 venv
