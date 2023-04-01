@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import Callable, Optional, Tuple, TYPE_CHECKING
 
 import tcod
 
@@ -54,6 +54,11 @@ WAIT_KEYS = {
     tcod.event.K_CLEAR,
 }
 
+CONFIRM_KEYS = {
+    tcod.event.K_RETURN,
+    tcod.event.K_KP_ENTER,
+}
+
 class EventHandler(tcod.event.EventDispatch[Action]):
     def __init__(self, engine: Engine):
         self.engine = engine
@@ -62,10 +67,9 @@ class EventHandler(tcod.event.EventDispatch[Action]):
         self.handle_action(self.dispatch(event))
 
     def handle_action(self, action: Optional[Action]) -> bool:
-        """
-        Controle ações retornadas por métodos de evento.
-        Retorna True se a ação avança um turno.
-        """
+        # Controle ações retornadas por métodos de evento.
+        # Retorna True se a ação avança um turno.
+
         if action is None:
             return False
 
@@ -118,28 +122,22 @@ class AskUserEventHandler(EventHandler):
         return self.on_exit()
     
     def on_exit(self) -> Optional[Action]:
-        """
-        Chamado quando o usuário está tentando sair ou cancelar uma ação.
+        # Chamado quando o usuário está tentando sair ou cancelar uma ação.
+        # Por padrão retorna ao main event handler.
 
-        Por padrão retorna ao main event handler.
-        """
         self.engine.event_handler = MainGameEventHandler(self.engine)
         return None
 
 class InventoryEventHandler(AskUserEventHandler):
-    """
-    Este handler permite o usuário escolher um item.
-
-    O que acontece depois depende da subclasse.
-    """
+    # Este handler permite o usuário escolher um item.
+    # O que acontece depois depende da subclasse.
 
     TITLE = "<missing title>"
 
     def on_render(self, console: tcod.Console) -> None:
-        """
-        Renderiza um menu de inventário, que exibe os itens dentro dele e a letra para seleciona-los.
-        Será movido para uma posição diferente baseada na posição do jogador, para que ele sempre veja onde está.
-        """
+        # Renderiza um menu de inventário, que exibe os itens dentro dele e a letra para seleciona-los.
+        # Será movido para uma posição diferente baseada na posição do jogador, para que ele sempre veja onde está.
+
         super().on_render(console)
         number_of_items_in_inventory = len(self.engine.player.inventory.items)
 
@@ -211,6 +209,110 @@ class InventoryDropHandler(InventoryEventHandler):
         # Larga este item.
         return actions.DropItem(self.engine.player, item)
 
+class SelectIndexHandler(AskUserEventHandler):
+    # Lida com a solicitação ao usuário de um índice no mapa
+
+    def __init__(self, engine: Engine):
+        # Seta o cursor no jogador quando esse handler é construído.
+        super().__init__(engine)
+        player = self.engine.player
+        engine.mouse_location = player.x, player.y
+    
+    def on_render(self, console: tcod.Console) -> None:
+        # Destaca o tile na posição do cursor.
+        super().on_render(console)
+        x, y = self.engine.mouse_location
+        console.tiles_rgb["bg"][x, y] = color.white
+        console.tiles_rgb["fg"][x, y] = color.black
+    
+    def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[Action]:
+        # Verifica por teclas de movimentação ou confirmação.
+        key = event.sym
+        if key in MOVE_KEYS:
+            modifier = 1 # Segurando uma tecla de movimentação aumenta a velocidade de movimento.
+            if event.mod & (tcod.event.KMOD_LSHIFT | tcod.event.KMOD_RSHIFT):
+                modifier *= 5
+            if event.mod & (tcod.event.KMOD_LCTRL | tcod.event.KMOD_RCTRL):
+                modifier *= 10
+            if event.mod & (tcod.event.KMOD_LALT | tcod.event.KMOD_RALT):
+                modifier *= 20
+            
+            x, y = self.engine.mouse_location
+            dx, dy = MOVE_KEYS[key]
+            x += dx * modifier
+            y += dy * modifier
+            # Limita a posição do mouse ao tamanho do mapa.
+            x = max(0, min(x, self.engine.game_map.width - 1))
+            y = max(0, min(y, self.engine.game_map.height - 1))
+            self.engine.mouse_location = x, y
+            return None
+        elif key in CONFIRM_KEYS:
+            return self.on_index_selected(*self.engine.mouse_location)
+        return super().ev_keydown(event)
+    
+    def ev_mousebuttondown(self, event: tcod.event.MouseButtonDown) -> Optional[Action]:
+        # Clique esquerdo confirma a seleção.
+        if self.engine.game_map.in_bounds(*event.tile):
+            if event.button == 1:
+                return self.on_index_selected(*event.tile)
+        return super().ev_mousebuttondown(event)
+    
+    def on_index_selected(self, x: int, y: int) -> Optional[Action]:
+        # Chamado quando um índice é selecionado.
+        raise NotImplementedError()
+
+class LookHandler(SelectIndexHandler):
+    # Permite ao jogador observar o cenário usando o teclado.
+    def on_index_selected(self, x: int, y: int) -> None:
+        # Retorna ao controlador principal.
+        self.engine.event_handler = MainGameEventHandler(self.engine)
+
+class SingleRangedAttackHandler(SelectIndexHandler):
+    # Controla a seleção de um inimigo como alvo. Somente o inimigo selecionado é afetado.
+    def __init__(
+        self, engine: Engine, callback: Callable[[Tuple[int, int]], Optional[Action]]
+    ):
+        super().__init__(engine)
+
+        self.callback = callback
+    
+    def on_index_selected(self, x: int, y: int) -> Optional[Action]:
+        return self.callback((x, y))
+
+class AreaRangedAttackHandler(SelectIndexHandler):
+    # Lida com alvos em um raio de determinada área. Uma entidade dentro da área será afetada.
+
+    def __init__(
+        self,
+        engine: Engine,
+        radius: int,
+        callback: Callable[[Tuple[int, int]], Optional[Action]],
+    ):
+
+        super().__init__(engine)
+
+        self.radius = radius
+        self.callback = callback
+
+    def on_render(self, console: tcod.Console) -> None:
+        # Realça um tile no cursor.
+        super().on_render(console)
+
+        x, y = self.engine.mouse_location
+
+        # Desenha um retângulo envolta da área alvo, para que o jogador saiva quais tiles serão afetados.
+        console.draw_frame(
+            x=x - self.radius - 1,
+            y=y - self.radius - 1,
+            width=self.radius ** 2,
+            height=self.radius ** 2,
+            fg=color.red,
+            clear=False,
+        )
+    
+    def on_index_selected(self, x: int, y: int) -> Optional[Action]:
+        return self.callback((x, y))
+
 class MainGameEventHandler(EventHandler):
     def ev_keydown(self, event: tcod.event.KeyDown) -> Optional[Action]:
         action: Optional[Action] = None
@@ -222,7 +324,7 @@ class MainGameEventHandler(EventHandler):
         if key in MOVE_KEYS:
             dx, dy = MOVE_KEYS[key]
             action = BumpAction(player, dx, dy)
-
+            
         elif key in WAIT_KEYS:
             action = WaitAction(player)
 
@@ -240,6 +342,9 @@ class MainGameEventHandler(EventHandler):
 
         elif key == tcod.event.K_d:
             self.engine.event_handler = InventoryDropHandler(self.engine)
+
+        elif key == tcod.event.K_SLASH:
+            self.engine.event_handler = LookHandler(self.engine)
 
         # Nenhuma tecla válida foi pressionada.
         return action

@@ -21,12 +21,11 @@ class Action:
         return self.entity.gamemap.engine
 
     def perform(self) -> None:
-        """
-        Executa a ação com os objetos necessários para determinar seu escopo.
-        'self.engine' é o escopo onde esta ação está sendo executada.
-        'self.entity' é o objeto executando a ação.
-        Este método precisa ser sobrescrito pela subclasse 'Action'.
-        """
+        # Executa a ação com os objetos necessários para determinar seu escopo.
+        # 'self.engine' é o escopo onde esta ação está sendo executada.
+        # 'self.entity' é o objeto executando a ação.
+        # Este método precisa ser sobrescrito pela subclasse 'Action'.
+
         raise NotImplementedError()
 
 class PickupAction(Action):
@@ -41,15 +40,16 @@ class PickupAction(Action):
         inventory = self.entity.inventory
 
         for item in self.engine.game_map.items:
-            if len(inventory.items) >= inventory.capacity:
-                raise exceptions.Impossible("Your inventory is full.")
+            if actor_location_x == item.x and actor_location_y == item.y:
+                if len(inventory.items) >= inventory.capacity:
+                    raise exceptions.Impossible("Your inventory is full.")
 
-            self.engine.game_map.entities.remove(item)
-            item.parent = self.entity.inventory
-            inventory.items.append(item)
+                self.engine.game_map.entities.remove(item)
+                item.parent = self.entity.inventory
+                inventory.items.append(item)
 
-            self.engine.message_log.add_message(f"You picked up the {item.name}!")
-            return
+                self.engine.message_log.add_message(f"You picked up the {item.name}!")
+                return
         
         raise exceptions.Impossible("There is nothing here to pick up.")
 

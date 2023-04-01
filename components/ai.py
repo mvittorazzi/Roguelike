@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import List, Tuple, TYPE_CHECKING
+import random
+from typing import List, Optional, Tuple, TYPE_CHECKING
 from entity import Entity
 
 import numpy as np # type: ignore
 import tcod
 
-from actions import Action, MeleeAction, MovementAction, WaitAction
+from actions import Action, BumpAction, MeleeAction, MovementAction, WaitAction
 
 if TYPE_CHECKING:
     from entity import Actor
@@ -71,3 +72,44 @@ class HostileEnemy(BaseAI):
             ).perform()
 
         return WaitAction(self.entity).perform()
+
+class ConfusedEnemy(BaseAI):
+    # Um inimigo confuso vai tropeçar sem direção por determinado número de turnos, então voltará para
+    # IA normal. Se um ator ocupar um tile que ele está se movento aleatoriamente, ele atacará.
+    
+    def __init__(
+        self, entity: Actor, previous_ai: Optional[BaseAI], turns_remaining: int
+    ):
+        super().__init__(entity)
+
+        self.previous_ai = previous_ai
+        self.turns_remaining = turns_remaining
+    
+    def perform(self) -> None:
+        # Reverte a AI para o estado original se o efeito passou.
+        if self.turns_remaining <= 0:
+            self.engine.message_log.add_message(
+                f"The {self.entity.name} is no longer confused."
+            )
+            self.entity.ai = self.previous_ai
+        else:
+            # Escolhe uma direção aleatória
+            direction_x, direction_y = random.choice(
+                [
+                    (-1, -1),   # Noroeste
+                    (0, -1),    # Norte
+                    (1, -1),    # Nordeste
+                    (-1, 0),    # Oeste
+                    (1, 0),     # Leste
+                    (-1, 1),    # Sudoeste
+                    (0, 1),     # Sul
+                    (1, 1),     # Sudeste
+                ]
+            )
+
+            self.turns_remaining -= 1
+
+            # O ator vai ou tentar se mover ou atacar em uma direção aleatória.
+            # É possível que o ator apenas esbarre em uma parede, gastando um turno.
+
+            return BumpAction(self.entity, direction_x, direction_y).perform()
